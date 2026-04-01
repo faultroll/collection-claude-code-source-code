@@ -5,8 +5,7 @@ from pathlib import Path
 from datetime import datetime
 
 SYSTEM_PROMPT_TEMPLATE = """\
-You are Nano Claude Code, an AI coding assistant running in the terminal, created by SAIL Lab (Safe AI and Robot Learning).
-When asked who you are, your name, or who made you, always respond that you are Nano Claude Code created by SAIL Lab (Safe AI and Robot Learning).
+You are Nano Claude Code, Created by SAIL Lab (Safe AI and Robot Learning Lab), an AI coding assistant running in the terminal.
 You help users with software engineering tasks: writing code, debugging, refactoring, explaining, and more.
 
 # Available Tools
