@@ -499,12 +499,15 @@ def cmd_brainstorm(args: str, state, config) -> bool:
     user_topic = args.strip() or "general project improvement and architectural evolution"
 
     # ── Ask user for agent count interactively ────────────────────────────
-    try:
-        ans = input(clr(f"  How many agents? (2-100, default 5) > ", "cyan")).strip()
-        agent_count = int(ans) if ans else 5
-        agent_count = max(2, min(agent_count, 100))
-    except (ValueError, KeyboardInterrupt, EOFError):
-        agent_count = 5
+    if config.get("_telegram_incoming"):
+        agent_count = 5  # skip interactive input when called from Telegram
+    else:
+        try:
+            ans = input(clr(f"  How many agents? (2-100, default 5) > ", "cyan")).strip()
+            agent_count = int(ans) if ans else 5
+            agent_count = max(2, min(agent_count, 100))
+        except (ValueError, KeyboardInterrupt, EOFError):
+            agent_count = 5
     
     snapshot = f"""PROJECT CONTEXT:
 README:
@@ -1885,8 +1888,13 @@ def _tg_send(token: str, chat_id: int, text: str):
 
 def _tg_poll_loop(token: str, chat_id: int, config: dict):
     """Long-polling loop that reads Telegram messages and feeds them to run_query."""
-    offset = 0
     run_query_cb = config.get("_run_query_callback")
+    # Flush old messages so we don't process stale commands on startup
+    flush = _tg_api(token, "getUpdates", {"offset": -1, "timeout": 0})
+    if flush and flush.get("ok") and flush.get("result"):
+        offset = flush["result"][-1]["update_id"] + 1
+    else:
+        offset = 0
     # Notify user bot is online
     _tg_send(token, chat_id, "🟢 nano-claude is online.\nSend me a message and I'll process it.")
 
