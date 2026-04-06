@@ -41,11 +41,19 @@ English | [中文](https://github.com/SafeRL-Lab/nano-claude-code/blob/main/docs
 - **00:41 PM, Apr 05, 2026 (v3.05.4)**: 📅 **Structured Session History**
   - Sessions now auto-saved to dated directories; `/load` supports multi-select and merged history view.
 
-- **09:34 AM, Apr 05, 2026 (v3.05.3)**: ☁️ **GitHub Gist Cloud Sync**
-  - `/cloudsave` setup for seamless cross-machine session restoration.
-
-- **08:58 AM, Apr 05, 2026 (v3.05.2)**: 🕵️ **Proactive Background Monitoring**
-  - `/proactive [duration]` daemon thread for continuous monitoring loops and scheduled code checks.
+- 05:39 PM, Apr 05, 2026 (**v3.05.4**): **Reasoning, Rendering, and Packaging Improvements, Enhanced Memory System, Native vision support for local Ollama models, Bracketed Paste Mode, Rich Tab Completion**
+  - **Bracketed Paste Mode** — replaced the old timing-based multi-line paste detection with the standard terminal Bracketed Paste Mode protocol. Pasted text of any length (code blocks, long prompts, multi-paragraph instructions) is now collected as a single turn with zero latency and no blank-line artifacts. Falls back to a 60 ms timing window for terminals that don't support BPM. Bracketed paste mode is cleanly disabled on REPL exit.
+  - **Rich Tab Completion with descriptions** — pressing Tab after `/` now shows every command with a one-line description and a hint of its subcommands. Typing `/plugin ` then Tab lists all subcommands (`install`, `uninstall`, `enable`, …). Auto-completes to the unique match when only one command matches the prefix. Subcommands supported for `/mcp`, `/plugin`, `/tasks`, `/cloudsave`, `/voice`, `/permissions`, `/proactive`, and `/memory`.
+  - **Model name bug fix** — `--model ollama/qwen3.5:35b` no longer gets corrupted to `ollama/qwen3.5/35b`. The startup colon-to-slash conversion now only fires when the left side of `:` is a known provider name and no `/` is already present, preserving Ollama's `model:tag` format.
+  - **Native vision support for local Ollama models** (`llava`, `gemma4`, `llama3.2-vision`): new `/image [prompt]` command captures the current clipboard image, encodes it to Base64, and attaches it to the next prompt. Install Pillow with `pip install nano-claude-code[vision]`; Linux users also need `xclip` (`sudo apt install xclip`).
+  - **Enhanced Memory System** — added `confidence` / `source` / `last_used_at` / `conflict_group` metadata to every memory entry; conflict detection on `MemorySave` warns before overwriting; `MemorySearch` re-ranks results by `confidence × recency` (30-day decay) and updates `last_used_at` on hits; new `/memory consolidate` command runs a lightweight AI analysis of the current session and auto-saves up to 3 long-term insights (user preferences, feedback corrections, project decisions) at 0.8 confidence — never overwrites higher-confidence user memories.
+  - **Post-merge fixes** — removed a debug `debug_payload.json` file write that was firing on every OpenAI-compatible API call (left over from PR #11 development). Also fixed ANSI dim color not being reset after the thinking block ends, which caused subsequent text to appear dim in non-Rich terminals. Bumped `pyproject.toml` version to `3.05.4`, and moved `sounddevice` to the optional `voice` extra (`pip install nano-claude-code[voice]`).
+  - **Native Ollama reasoning + terminal rendering fix** — local reasoning models (`deepseek-r1`, `qwen3`, `gemma4`) now stream their `<think>` blocks to the terminal. Ollama exposes thoughts in `msg["thinking"]`, but nano-claude was previously dropping them; this is now fixed by yielding `ThinkingChunk` from the Ollama adapter. Also fixed a Windows CMD/PowerShell rendering issue where token-by-token ANSI dim resets caused thoughts to print vertically, and corrected `flush_response()` so it runs once at the end instead of on every thinking token. Enable with `/verbose` and `/thinking`.
+  - **uv support** — added `pyproject.toml`; install with `uv tool install .` to make the `nano_claude` command available globally from anywhere in an isolated environment, without manual PATH setup.
+- 00:41 PM, Apr 05, 2026: **v3.05.3 add structured session history** — Structured session history: on every exit, sessions are saved to `daily/YYYY-MM-DD/` (capped at `session_daily_limit`, default 5 per day) and appended to a master `history.json` (capped at `session_history_limit`, default 100). Each session file now includes `session_id` and `saved_at` metadata. `/load` groups sessions by date with time, ID, and turn-count display; supports multi-select (`1,2,3`) to merge sessions and `H` to load the full history with token-count confirmation. Both limits are configurable via `/config`.
+- 00:41 PM, Apr 05, 2026: **v3.05.3 fix session** — Structured session history: on every exit, sessions are saved to `daily/YYYY-MM-DD/` (capped at `session_daily_limit`, default 5 per day) and appended to a master `history.json` (capped at `session_history_limit`, default 100). Each session file now includes `session_id` and `saved_at` metadata. `/load` groups sessions by date with time, ID, and turn-count display; supports multi-select (`1,2,3`) to merge sessions and `H` to load the full history with token-count confirmation. Both limits are configurable via `/config`.
+- 09:34 AM, Apr 05, 2026: **v3.05.3** — Added GitHub Gist cloud sync: `/cloudsave setup <token>` to configure, `/cloudsave` to upload the current session to a private Gist, `/cloudsave auto on` to sync automatically on `/exit`, `/cloudsave list` to browse cloud sessions, and `/cloudsave load <id>` to restore from the cloud. Uses stdlib `urllib` — no new dependencies. Also added version number (e.g., `v3.05.2`) in the startup banner: The startup banner now displays the current version number (v3.05.2) in green, making it easy to identify which version is running at a glance.
+- 08:58 AM, Apr 05, 2026: **v3.05.2** — Introduced `/proactive [duration]` command: a background daemon thread watches for user inactivity and automatically wakes the agent up after the specified interval (e.g. `/proactive 5m`), enabling continuous monitoring loops without user intervention. `/proactive` with no args now shows current status; `/proactive off` disables it explicitly. Proactive polling state is stored in `config` (no module-level globals). Watcher exceptions are logged via `traceback` instead of silently swallowed. Also fixed duplicated output in Rich-enabled terminals by buffering text during streaming and rendering Markdown once via `rich.live.Live` — updates happen in-place for a true streaming Markdown experience. 
 - 10:51 PM, Apr 04, 2026: **v3.05_fix04** — Fixed a crash on `/model` and config save commands caused by the newly introduced `_run_query_callback` being serialized to JSON; also added `SleepTimer` usage    
   guidance to the system prompt so the agent knows when to invoke background timers proactively.
 - 10:28 PM, Apr 04, 2026: **v3.05_fix03** — Added a native `SleepTimer` tool that lets the agent schedule background timers and autonomously wake itself up after a delay — no user prompt required. Paired with a `threading.Lock` to prevent output collisions when background and foreground calls overlap. Also includes cross-platform fixes: Windows ANSI color support, CRLF-aware Edit tool matching, an interactive numbered menu for `/load`, native Ollama streaming via `/api/chat`, and auto-capping `max_tokens` per provider to prevent API errors. 
@@ -150,6 +158,8 @@ Claude Code is a powerful, production-grade AI coding assistant — but its sour
 - **Rich Live streaming rendering** — When `rich` is installed, responses stream as live-updating Markdown in place (no duplicate raw text), with clean tool-call interleaving.
 - **Native Ollama reasoning** — Local reasoning models (deepseek-r1, qwen3, gemma4) stream their `<think>` tokens directly to the terminal via `ThinkingChunk` events; enable with `/verbose` and `/thinking`.
 - **Native Ollama vision** — `/image [prompt]` captures the clipboard and sends it to local vision models (llava, gemma4, llama3.2-vision) via Ollama's native image API. No cloud required.
+- **Reliable multi-line paste** — Bracketed Paste Mode (`ESC[?2004h`) collects any pasted text — code blocks, multi-paragraph prompts, long diffs — as a single turn with zero latency and no blank-line artifacts.
+- **Rich Tab completion** — Tab after `/` shows all commands with one-line descriptions and subcommand hints; subcommand Tab-complete works for `/mcp`, `/plugin`, `/tasks`, `/cloudsave`, and more.
 
 ### Key design differences
 
@@ -181,21 +191,26 @@ Claude Code is a powerful, production-grade AI coding assistant — but its sour
 
 | Feature | Details |
 |---|---|
-| 🌐 **Multi-provider** | Anthropic · OpenAI · Google · Kimi · Qwen · Zhipu · DeepSeek · Ollama · LM Studio · vLLM |
-| ⌨️ **Interactive REPL** | Readline history, Tab-complete slash commands |
-| 🔄 **Agent Loop** | Streaming API + automatic tool-use loop with smart retry logic |
-| 🧰 **25+ Built-in Tools** | Read · Write · Edit · Bash · Glob · Grep · WebFetch · **NotebookEdit** · **GetDiagnostics** · **SleepTimer** |
-| 🔌 **MCP Integration** | Connect any MCP server (stdio/SSE/HTTP) with auto-discovery |
-| 🖱️ **Plugin System** | Install plugins from git URLs; multi-scope (user/project) support |
-| ❓ **Interactive Q&A** | Claude can pause and ask clarifying questions mid-task |
-| 📋 **Task Management** | Sequential IDs, dependency edges, and persistence to `.nano_claude/` |
-| 📑 **Diff View** | Git-style colorized diffs for `Edit` and `Write` operations |
-| 🗜️ **Context Management** | Two-layer compression (Snip + AI Summarization) to stay within limits |
-| 🧠 **Persistent Memory** | Dual-scope memory (User/Project) with AI-re-ranking and consolidation |
-| 🎙️ **Voice Input** | Record → Transcribe → Auto-submit. Works 100% offline via Whisper |
-| 📷 **Native Vision** | Capture clipboard and send to local multimodal models (Ollama) |
-| 🕵️ **Proactive Bot** | Background sentinel daemon for continuous monitoring loops |
-| ⚡ **Live Rendering** | Real-time Markdown streaming with `rich.live` support |
+| Multi-provider | Anthropic · OpenAI · Gemini · Kimi · Qwen · Zhipu · DeepSeek · Ollama · LM Studio · Custom endpoint |
+| Interactive REPL | readline history, Tab-complete slash commands with descriptions + subcommand hints; Bracketed Paste Mode for reliable multi-line paste |
+| Agent loop | Streaming API + automatic tool-use loop |
+| 25 built-in tools | Read · Write · Edit · Bash · Glob · Grep · WebFetch · WebSearch · **NotebookEdit** · **GetDiagnostics** · MemorySave · MemoryDelete · MemorySearch · MemoryList · Agent · SendMessage · CheckAgentResult · ListAgentTasks · ListAgentTypes · Skill · SkillList · AskUserQuestion · TaskCreate/Update/Get/List · **SleepTimer** · *(MCP + plugin tools auto-added at startup)* |
+| MCP integration | Connect any MCP server (stdio/SSE/HTTP), tools auto-registered and callable by Claude |
+| Plugin system | Install/uninstall/enable/disable/update plugins from git URLs or local paths; multi-scope (user/project); recommendation engine |
+| AskUserQuestion | Claude can pause and ask the user a clarifying question mid-task, with optional numbered choices |
+| Task management | TaskCreate/Update/Get/List tools; sequential IDs; dependency edges; metadata; persisted to `.nano_claude/tasks.json`; `/tasks` REPL command |
+| Diff view | Git-style red/green diff display for Edit and Write |
+| Context compression | Auto-compact long conversations to stay within model limits |
+| Persistent memory | Dual-scope memory (user + project) with 4 types, confidence/source metadata, conflict detection, recency-weighted search, `last_used_at` tracking, and `/memory consolidate` for auto-extraction |
+| Multi-agent | Spawn typed sub-agents (coder/reviewer/researcher/…), git worktree isolation, background mode |
+| Skills | Built-in `/commit` · `/review` + custom markdown skills with argument substitution and fork/inline execution |
+| Plugin tools | Register custom tools via `tool_registry.py` |
+| Permission system | `auto` / `accept-all` / `manual` modes |
+| 19 slash commands | `/model` · `/config` · `/save` · `/cost` · `/memory` · `/skills` · `/agents` · `/voice` · `/proactive` · … |
+| Voice input | Record → transcribe → auto-submit. Backends: `sounddevice` / `arecord` / SoX + `faster-whisper` / `openai-whisper` / OpenAI API. Works fully offline. |
+| Vision input | `/image [prompt]` captures the clipboard image and sends it to a local vision model (Ollama `llava`, `gemma4`, `llama3.2-vision`). Requires `pip install nano-claude-code[vision]`; Linux also needs `xclip`. |
+| Proactive monitoring | `/proactive [duration]` starts a background sentinel daemon; agent wakes automatically after inactivity, enabling continuous monitoring loops without user prompts |
+| Rich Live streaming | When `rich` is installed, responses render as live-updating Markdown in place — no duplicate raw text, clean tool-call interleaving |
 | Context injection | Auto-loads `CLAUDE.md`, git status, cwd, persistent memory |
 | Session persistence | Autosave on exit to `daily/YYYY-MM-DD/` (per-day limit) + `history.json` (master, all sessions) + `session_latest.json` (/resume); sessions include `session_id` and `saved_at` metadata; `/load` grouped by date |
 | Cloud sync | `/cloudsave` syncs sessions to private GitHub Gists; auto-sync on exit; load from cloud by Gist ID. No new dependencies (stdlib `urllib`). |
@@ -430,6 +445,15 @@ nano_claude --model ollama/llama3.3
 nano_claude --model ollama/deepseek-r1
 ```
 
+Or
+
+```bash
+python nano_claude.py --model ollama/qwen2.5-coder
+python nano_claude.py --model ollama/llama3.3
+python nano_claude.py --model ollama/deepseek-r1
+python nano_claude.py --model ollama/qwen3.5:35b
+```
+
 **List your locally available models:**
 
 ```bash
@@ -602,7 +626,7 @@ nano_claude --thinking --verbose
 
 ## 🕹️ Slash Commands (REPL)
 
-Type `/` and press **Tab** to autocomplete.
+Type `/` and press **Tab** to see all commands with descriptions. Continue typing to filter, then Tab again to auto-complete. After a command name, press **Tab** again to see its subcommands (e.g. `/plugin ` → `install`, `uninstall`, `enable`, …).
 
 | Command | Description |
 |---|---|
